@@ -35,14 +35,15 @@ Intel 早期的 8086 CPU 提供了 20 根地址线,可寻址空间范围即 0~2^
 看一眼每一位得作用：  
 |bit |meaning|
 | ---- | ---- |
-|0	 |output register (60h) 中有数据|
-|1	 |input register (60h/64h) 有数据|
-|2	 |系统标志（上电复位后被置为0）|
-|3	 |data in input register is command (1) or data (0)|
-|4	 |1=keyboard enabled, 0=keyboard disabled (via switch)|
-|5	 |1=transmit timeout (data transmit not complete)|
-|6	 |1=receive timeout (data transmit not complete)|
-|7	 |1=even parity rec'd, 0=odd parity rec'd (should be odd)|
+|0|output register (60h) 中有数据|
+|1|input register (60h/64h) 有数据|
+|2|系统标志（上电复位后被置为0）|
+|3|data in input register is command (1) or data (0)|
+|4|1=keyboard enabled, 0=keyboard disabled (via switch)|
+|5|1=transmit timeout (data transmit not complete)|
+|6|1=receive timeout (data transmit not complete)|
+|7|1=even parity rec'd, 0=odd parity rec'd (should be odd)|  
+
 代码在boot下，bootasm.S，include了asm.h，调用了bootmain.c：  
 https://github.com/chyyuu/ucore_os_lab/blob/master/labcodes_answer/lab1_result/boot/bootasm.S  
 启动CPU: 切换到32位保护模式，跳转到C。BIOS将此代码从硬盘的第一个扇区加载到在物理地址0x7c00处的# memory，并开始以实际模式执行#与%cs=0 %ip=7c00。  
