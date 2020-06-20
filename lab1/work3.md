@@ -10,8 +10,8 @@
 
 ## 1. 为何开启 A20，以及如何开启 A20
 
-https://wenku.baidu.com/view/d6efe68fcc22bcd126ff0c00.html
-Intel 早期的 8086 CPU 提供了 20 根地址线,可寻址空间范围即 0~2^20(00000H~FFFFFH)的 1MB 内存空间。但 8086 的数据处理位宽位 16 位，无法直接寻址 1MB 内存空间，所以 8086 提供了段地址加偏移地址的地址转换机制。PC 机的寻址结构是 segment:offset，segment 和 offset 都是 16 位的寄存器，最大值是 0ffffh，换算成物理地址的计算方法是把 segment 左移 4 位，再加上 offset，所以 segment:offset 所能表达的寻址空间最大应为 0ffff0h + 0ffffh = 10ffefh（前面的 0ffffh 是 segment=0ffffh 并向左移动 4 位的结果，后面的 0ffffh 是可能的最大 offset），这个计算出的 10ffefh 是多大呢？大约是 1088KB，就是说，segment:offset 的地址表示能力，超过了 20 位地址线的物理寻址能力。所以当寻址到超过 1MB 的内存时，会发生“回卷”（不会发生异常）。但下一代的基于 Intel 80286 CPU 的 PC AT 计算机系统提供了 24 根地址线，这样 CPU 的寻址范围变为 2^24=16M,同时也提供了保护模式，可以访问到 1MB 以上的内存了，此时如果遇到“寻址超过 1MB ”的情况，系统不会再“回卷”了，这就造成了向下不兼容。为了保持完全的向下兼容性，IBM 决定在 PC AT计算机系统上加个硬件逻辑，来模仿以上的回绕特征，于是出现了A20Gate。他们的方法就是把A20地址线控制和键盘控制器的一个输出进行AND操作，这样来控制A20地址线的打开（使能）和关闭（屏蔽\禁止）。  
+https://wenku.baidu.com/view/d6efe68fcc22bcd126ff0c00.html  
+Intel 早期的 8086 CPU 提供了 20 根地址线,可寻址空间范围即 0到2^20(00000H~FFFFFH)的 1MB 内存空间。但 8086 的数据处理位宽位 16 位，无法直接寻址 1MB 内存空间，所以 8086 提供了段地址加偏移地址的地址转换机制。PC 机的寻址结构是 segment:offset，segment 和 offset 都是 16 位的寄存器，最大值是 0ffffh，换算成物理地址的计算方法是把 segment 左移 4 位，再加上 offset，所以 segment:offset 所能表达的寻址空间最大应为 0ffff0h + 0ffffh = 10ffefh（前面的 0ffffh 是 segment=0ffffh 并向左移动 4 位的结果，后面的 0ffffh 是可能的最大 offset），这个计算出的 10ffefh 是多大呢？大约是 1088KB，就是说，segment:offset 的地址表示能力，超过了 20 位地址线的物理寻址能力。所以当寻址到超过 1MB 的内存时，会发生“回卷”（不会发生异常）。但下一代的基于 Intel 80286 CPU 的 PC AT 计算机系统提供了 24 根地址线，这样 CPU 的寻址范围变为 2^24=16M,同时也提供了保护模式，可以访问到 1MB 以上的内存了，此时如果遇到“寻址超过 1MB ”的情况，系统不会再“回卷”了，这就造成了向下不兼容。为了保持完全的向下兼容性，IBM 决定在 PC AT计算机系统上加个硬件逻辑，来模仿以上的回绕特征，于是出现了A20Gate。他们的方法就是把A20地址线控制和键盘控制器的一个输出进行AND操作，这样来控制A20地址线的打开（使能）和关闭（屏蔽\禁止）。  
 一开始时A20地址线控制是被屏蔽的（总为0），直到系统软件通过一定的IO操作去打开它（参看bootasm.S）。很显然，在实模式下要访问高端内存区，这个开关必须打开，在保护模式下，由于使用 32 位地址线，如果 A20 恒等于 0，那么系统只能访问奇数兆的内存，即只能访问 0--1M、2-3M、4-5M......，这样无法有效访问所有可用内存。所以在保护模式下，这个开关也必须打开。  
 有了这些命令和知识，就可以实现操作 A20 Gate 来从实模式切换到保护模式了。 理论上讲，我们只要操作 8042 芯片的输出端口（64h）的 bit 1，就可以控制 A20 Gate，但实际上，当你准备向 8042 的输入缓冲区里写数据时，可能里面还有其它数据没有处理，所以，我们要首先禁止键盘操作，同时等待数据缓冲区中没有数据以后，才能真正地去操作 8042 打开或者关闭 A20 Gate。  
 **打开 A20 Gate 的具体步骤大致如下（参考 bootasm.S）：**
@@ -165,7 +165,7 @@ https://learningos.github.io/ucore_os_webdocs/lab1_figs/image012.png
 
 ----
 
-## 2. 如何初始化 GDT 表  
+## 2. 如何初始化 GDT 表  & 如何使能
 #### 1. 为何要分段？ 2. 如何分段的？
 在保护模式下，处理器分两步进行地址转换：逻辑地址转换机制（逻辑地址->线性地址）、分页机制（线性地址->物理地址）。  
 哪怕是最小程度的段机制，逻辑地址也是要进行段选择等操作的。逻辑地址 = 16位的**段选择符**+32位的**偏移量**组成的。
@@ -186,4 +186,125 @@ https://learningos.github.io/ucore_os_webdocs/lab1_figs/image012.png
 的寄存器。  
 2．隐含的载入指令，如远指针版的CALL，JMP，RET指令，SYSENTER和SYSEXIT指令，还有
 IRET， INTn， INTO和INT3指令。 伴随这些指令的操作， 他们改变了CS寄存器的内容， 有时也会改变其他段寄存器的内容。  
-MOV指令也可以用于将一个段寄存器的可见部分保存到一个通用寄存器中。
+MOV指令也可以用于将一个段寄存器的可见部分保存到一个通用寄存器中。  
+- 段描述符
+段描述符是GDT或LDT中的一个数据结构，它为处理器提供诸如段基址，段大小，访问权限及状态等信息。段描述符主要是由编译器，连接器，装载器或者操作系统构造的，而不是由应用程序产生的。
+- 段表  
+段表是自己定义的一堆东西，每一个是8字节；下面代码可以看到。  
+```
+lgdt gdtdesc
+    .
+    .
+    .
+# Bootstrap GDT
+.p2align 2                                  # force 4 byte alignment   
+                                            # 强制四字节对齐
+gdt:
+    SEG_NULLASM                             # null seg
+    SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg for bootloader and kernel
+    SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg for bootloader and kernel
+
+gdtdesc:
+    .word 0x17      # sizeof(gdt) - 1
+    .long gdt       # address gdt
+```
+第一行lgdt命令表示加载后面的段表，直接看到倒数后三行。  
+```
+.word 0x17 #表示gdt的字节长度 - 1，具体为什么不知道；因为上面gdt定义了三个表格，每一个段都是8字节，所以是24-1 = 23 = 0x17  
+.long gdt  #表示上面gdt的首地址
+```
+这里的word的用法表示：在当前位置存放一个字。  
+gdtdesc 其实表示一个标签，相当于是一个地址；在这个地址处，用word命令存放了一个字，这个字是0x17，相当于表的大小；后来命令long将gdt表的编译地址放在当前地址。
+```
+gdt: # 这里定义了三个段
+    SEG_NULLASM                             # null seg
+    SEG_ASM(STA_X|STA_R, 0x0, 0xffffffff)   # code seg for bootloader and kernel
+    SEG_ASM(STA_W, 0x0, 0xffffffff)         # data seg for bootloader and kernel
+```
+而这里调用了asm.h头文件中的宏定义函数：  
+```
+#define SEG_NULLASM                                             \
+    .word 0, 0;                                                 \
+    .byte 0, 0, 0, 0
+
+#define SEG_ASM(type,base,lim)                                  \
+    .word (((lim) >> 12) & 0xffff), ((base) & 0xffff);          \
+    .byte (((base) >> 16) & 0xff), (0x90 | (type)),             \
+        (0xC0 | (((lim) >> 28) & 0xf)), (((base) >> 24) & 0xff)
+```
+.long指示声明一组数，每个数占32位；  
+.word声明的数据每一个16位；  
+.byte声明的数据每一个8位。  
+所以，上述的宏定义，每一个定义都是8字节。  
+至于上述函数中的各种操作，是因为在段描述符中，type、base、limit都是分段排列的。参考下面（第二个）：  
+参考：https://www.cnblogs.com/fatsheep9146/p/5115086.html  
+参考：https://blog.csdn.net/q936330007/article/details/52234557  
+参考：https://blog.csdn.net/yxc135/article/details/8753130  
+
+当然asm.h中有段的type定义：
+```
+/* Application segment type bits */
+#define STA_X       0x8     // Executable segment
+#define STA_E       0x4     // Expand down (non-executable segments)
+#define STA_C       0x4     // Conforming code segment (executable only)
+#define STA_W       0x2     // Writeable (non-executable segments)
+#define STA_R       0x2     // Readable (executable segments)
+#define STA_A       0x1     // Accessed
+```
+#### 进入保护模式
+继续看boot代码：
+```
+    movl %cr0, %eax
+    orl $CR0_PE_ON, %eax
+    movl %eax, %cr0
+```
+打开保护模式，保护模式的标志位在cr0寄存器中；立即数CR0_PE_ON在代码开头已经定义了。  
+```
+    # Jump to next instruction, but in 32-bit code segment.
+    # Switches processor into 32-bit mode.
+    ljmp $PROT_MODE_CSEG, $protcseg
+
+.code32                                             # Assemble for 32-bit mode
+protcseg:
+    # Set up the protected-mode data segment registers
+    movw $PROT_MODE_DSEG, %ax                       # Our data segment selector
+    movw %ax, %ds                                   # -> DS: Data Segment
+    movw %ax, %es                                   # -> ES: Extra Segment
+    movw %ax, %fs                                   # -> FS
+    movw %ax, %gs                                   # -> GS
+    movw %ax, %ss                                   # -> SS: Stack Segment
+```
+（1）由于上面的代码已经打开了保护模式了，所以这里要使用逻辑地址，而不是之前实模式的地址了。  
+这里用到了PROT_MODE_CSEG, 他的值是0x8。根据段选择子的格式定义，0x8就翻译成：  
+INDEX TI CPL  
+0000 0000 0000 1000  
+INDEX代表GDT中的索引，TI代表使用GDTR中的GDT， CPL代表处于特权级。  
+PROT_MODE_CSEG选择子选择了GDT中的第1个段描述符。这里使用的gdt就是变量gdt，下面可以看到gdt的第1个段描述符的基地址是0x0000,所以经过映射后和转换前的内存映射的物理地址一样。  
+（2）.code 32 下面的代码表示32位；  
+继续将ds，data segment的值全部赋值给其他段寄存器。  
+```
+    # Set up the stack pointer and call into C. The stack region is from 0--start(0x7c00)
+    movl $0x0, %ebp
+    movl $start, %esp
+    call bootmain
+
+    # If bootmain returns (it shouldn't), loop.
+```
+**ebp：** EBP寄存器用与存放在进入call以后的ESP的值，便于退出的时候回复ESP的值，达到堆栈平衡的目的；这里先清零；  
+**ESP：** 用于访问栈顶；这里把start函数设置位进入bootmain之前的栈顶；  
+- BP为基指针(Base Pointer)寄存器，用它可直接存取堆栈中的数据；  
+- SP为堆栈指针(Stack Pointer)寄存器，用它只可访问栈顶；  
+
+这两个寄存器的用法如下：
+```
+1. 让EBP保存ESP的值；
+PUSH   EBP
+MOV   EBP,   ESP
+
+2. 在结束的时候调用
+mov  esp,  ebp
+pop   ebp
+retn
+```
+
+最后的最后调用 bootmain函数；
