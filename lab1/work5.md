@@ -51,11 +51,63 @@ movl   %esp , %ebp
 | 参数1 |
 | 返回地址 |
 | 上一层[ebp] | <-------- [ebp] |
-| 局部变量 | 低位地址 |
+| 局部变量 | 低位地址 |  
 
-这两条汇编指令的含义是：  
-首先将 ebp 寄存器入栈，然后将栈顶指针 esp 赋值给 ebp。  
+这两条汇编指令的含义是：首先将 ebp 寄存器入栈，然后将栈顶指针 esp 赋值给 ebp。  
+
 “mov ebp esp” 这条指令表面上看是用 esp 覆盖 ebp 原来的值，其实不然。因为给 ebp 赋值之前，原 ebp 值已经被压栈（位于栈顶），而新的 ebp 又恰恰指向栈顶。  
-此时 ebp 寄存器就已经处于一个非常重要的地位，该寄存器中存储着栈中的一个地址（原 ebp 入栈后的栈顶），从该地址为基准，向上（栈底方向）能获取返回地址、参数值，向下（栈顶方向）能获取函数局部变量值，**而该地址处又存储着上一层函数调用时的 ebp 值**。
+此时 ebp 寄存器就已经处于一个非常重要的地位，该寄存器中存储着栈中的一个地址（原 ebp 入栈后的栈顶），从该地址为基准，向上（栈底方向）能获取返回地址、参数值，向下（栈顶方向）能获取函数局部变量值，**而该地址处又存储着上一层函数调用时的 ebp 值**。  
+
+**PS:** 这里一直没理解。怎么样反朔的？首先 push ebp 只是将ebp的值入栈，ebp只是个寄存器，它还可以放其他的值；然后再将esp —— 栈顶地址赋值给ebp寄存器。这样，就构成了栈顶记录上一个esp的值，当前ebp记录了当前esp的值。  
 
 一般而言，ss:[ebp+4]处为返回地址，ss:[ebp+8]处为第一个参数值（最后一个入栈的参数值，此处假设其占用 4 字节内存），ss:[ebp-4]处为第一个局部变量，ss:[ebp]处为上一层 ebp 值。由于 ebp 中的地址处总是“上一层函数调用时的 ebp 值”，而在每一层函数调用中，都能通过当时的 ebp 值“向上（栈底方向）”能获取返回地址、参数值，“向下（栈顶方向）”能获取函数局部变量值。如此形成递归，直至到达栈底。这就是函数调用栈。
+
+----
+
+这个练习要完成代码，“kern/debug/kdebug.c::print_stackframe” ：
+```
+void
+print_stackframe(void) {
+     /* LAB1 YOUR CODE : STEP 1 */
+     /* (1) call read_ebp() to get the value of ebp. the type is (uint32_t);
+      * (2) call read_eip() to get the value of eip. the type is (uint32_t);
+      * (3) from 0 .. STACKFRAME_DEPTH
+      *    (3.1) printf value of ebp, eip
+      *    (3.2) (uint32_t)calling arguments [0..4] = the contents in address (uint32_t)ebp +2 [0..4]
+      *    (3.3) cprintf("\n");
+      *    (3.4) call print_debuginfo(eip-1) to print the C calling function name and line number, etc.
+      *    (3.5) popup a calling stackframe
+      *           NOTICE: the calling funciton's return addr eip  = ss:[ebp+4]
+      *                   the calling funciton's ebp = ss:[ebp]
+      */
+	uint32_t ebp = read_ebp();
+	uint32_t eip = read_eip();
+	int i, j;
+	for (i = 0; ebp != 0 && i < STACKFRAME_DEPTH; i++) {
+		cprintf("ebp : 0x%08x \neip : 0x%08x \n", ebp, eip);
+		uint32_t *args = (uint32_t *)ebp + 2;
+		for (j = 0; j < 4; j++) {
+			cprintf("args %d : 0x%08x \n", j, args[j]);
+		}
+		cprintf("\n");
+		print_debuginfo(eip - 1);
+		eip = *(((uint32_t *) ebp)+1);
+		ebp = *((uint32_t *) ebp);
+	}
+}
+```
+这里的代码其实非常简单，其实就是看看ebp和堆栈上下的值；还是很好理解的。  
+首先定义两个uint32类型的值，用来获取ebp，esp的值。然后更具地址进行，加减操作得到其他地址。。挺简单的。我更感兴趣他是如何获取ebp的值的。我们一起看看函数 read_ebp();
+```
+static inline uint32_t
+read_ebp(void) {
+    uint32_t ebp;
+    asm volatile ("movl %%ebp, %0" : "=r" (ebp));
+    return ebp;
+}
+```
+其实还是很简单的~，就是内嵌汇编。解释下一些关键字吧。  
+
+> “movl %1,%0”是指令模板；“%0”和“%1”代表指令的操作数，称为占位符，内嵌汇编靠它们将C语言表达式与指令操作数相对应。  
+指令模板后面用小括号括起来的是C语言表达式，本例中只有两个：“result”和“input”，他们按照出现的顺序分别与指令操作数“%0”，“%1，”对应；注意对应顺序：第一个C表达式对应“%0”；第二个表达式对应“%1”，依次类推，操作数至多有10个，分别用“%0”，“%1”….“%9，”表示。    
+
