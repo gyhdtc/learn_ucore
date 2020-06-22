@@ -111,3 +111,6 @@ read_ebp(void) {
 > “movl %1,%0”是指令模板；“%0”和“%1”代表指令的操作数，称为占位符，内嵌汇编靠它们将C语言表达式与指令操作数相对应。  
 指令模板后面用小括号括起来的是C语言表达式，本例中只有两个：“result”和“input”，他们按照出现的顺序分别与指令操作数“%0”，“%1，”对应；注意对应顺序：第一个C表达式对应“%0”；第二个表达式对应“%1”，依次类推，操作数至多有10个，分别用“%0”，“%1”….“%9，”表示。    
 
+
+参考入门：https://blog.csdn.net/liuqiaoyu080512/article/details/8457528  
+参考官方：https://www.ibm.com/developerworks/cn/aix/library/au-inline_assembly/index.html  
