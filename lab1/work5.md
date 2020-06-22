@@ -114,3 +114,16 @@ read_ebp(void) {
 
 参考入门：https://blog.csdn.net/liuqiaoyu080512/article/details/8457528  
 参考官方：https://www.ibm.com/developerworks/cn/aix/library/au-inline_assembly/index.html  
+
+----
+**结果**
+|ebp|eip|args|function|
+|----|----|----|----|
+| 0x00007b08 | 0x001009a6 | [0] : 0x00010094 ;<br>[1] : 0x00000000 ;<br>[2] : 0x00007b38 ;<br>[3] : 0x00100092 ;| kern/debug/kdebug.c:306: print_stackframe+21 |
+| 0x00007b18 | 0x00100ca8 | [0] : 0x00000000 ;<br>[1] : 0x00000000 ;<br>[2] : 0x00000000 ;<br>[3] : 0x00007b88 ;| kern/debug/kmonitor.c:125: mon_backtrace+10 |
+| 0x00007b38 | 0x00100092 | [0] : 0x00000000 ;<br>[1] : 0x00007b60 ;<br>[2] : 0xffff0000 ;<br>[3] : 0x00007b64 ;| kern/init/init.c:48: grade_backtrace2+33 |
+| 0x00007b58 | 0x001000bb | [0] : 0x00000000 ;<br>[1] : 0xffff0000 ;<br>[2] : 0x00007b84 ;<br>[3] : 0x00000029 ;| kern/init/init.c:53: grade_backtrace1+38 |
+| 0x00007b78 | 0x001000d9 | [0] : 0x00000000 ;<br>[1] : 0x00100000 ;<br>[2] : 0xffff0000 ;<br>[3] : 0x0000001d ;| kern/init/init.c:58: grade_backtrace0+23 |
+| 0x00007b98 | 0x001000fe | [0] : 0x0010331c ;<br>[1] : 0x00103300 ;<br>[2] : 0x0000130a ;<br>[3] : 0x00000000 ;| kern/init/init.c:63: grade_backtrace+34 |
+| 0x00007bc8 | 0x00100055 | [0] : 0x00000000 ;<br>[1] : 0x00000000 ;<br>[2] : 0x00000000 ;<br>[3] : 0x00010094 ;| kern/init/init.c:28: kern_init+84 |
+| 0x00007bf8 | 0x00007d68 | [0] : 0xc031fcfa ;<br>[1] : 0xc08ed88e ;<br>[2] : 0x64e4d08e ;<br>[3] : 0xfa7502a8 ;| (unknow)-- 0x00007d67 -- |
