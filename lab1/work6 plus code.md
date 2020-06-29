@@ -1,1 +1,1 @@
-## Lab1 的challenge code解析
+## Lab1 code解析
