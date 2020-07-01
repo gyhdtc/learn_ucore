@@ -96,3 +96,76 @@ struct list_entry {
 
 typedef struct list_entry list_entry_t;
 ```
+
+----
+```
+static void
+default_init_memmap(struct Page *base, size_t n) {
+    assert(n > 0);
+    struct Page *p = base;
+    for (; p != base + n; p ++) {
+        assert(PageReserved(p));
+        p->flags = p->property = 0;
+        set_page_ref(p, 0);
+    }
+    base->property = n;
+    SetPageProperty(base);
+    nr_free += n;
+    list_add(&free_list, &(base->page_link));
+}
+```
+page 结构体：  
+```
+struct Page {
+    int ref;                    // page frame's reference counter
+    uint32_t flags;       // array of flags that describe the status of the page frame
+    unsigned int property;      // the num of free block, used in first fit pm manager
+    list_entry_t page_link;     // free list link
+};
+```
+
+----
+完成内存分配，输出：  
+```
+e820map:
+  memory: 0009fc00, [00000000, 0009fbff], type = 1.
+  memory: 00000400, [0009fc00, 0009ffff], type = 2.
+  memory: 00010000, [000f0000, 000fffff], type = 2.
+  memory: 07efe000, [00100000, 07ffdfff], type = 1.
+  memory: 00002000, [07ffe000, 07ffffff], type = 2.
+  memory: 00040000, [fffc0000, ffffffff], type = 2.
+check_alloc_page() succeeded!
+````
+代码：  
+```
+static struct Page *
+default_alloc_pages(size_t n) {
+    assert(n > 0);
+    if (n > nr_free) {
+    	return NULL;
+    }
+    struct Page *page = NULL;
+    list_entry_t *le;
+    le = &free_list;
+    while ((le = le->next) != &free_list) {
+    	struct Page *p = le2page(le, page_link);
+    	if (p->property >= n) {
+    		page = p;
+    		break;
+    	}
+    }
+    if (page != NULL) {
+    	if (page->property > n) {
+    		struct Page *p = page + n;
+    		p->property = page->property - n;
+    		SetPageProperty(p);
+    		list_add(&free_list, &(p->page_link));
+    	}
+    	list_del(&(page->page_link));
+    	nr_free -= n;
+    	ClearPageProperty(page);
+    }
+    return page;
+}
+```
+**要注意的就是，先把剩余page入链，再删除原来的；还有就是page个数和所需page相等的话，就直接删除了，看上面代码中的两处判断。**
