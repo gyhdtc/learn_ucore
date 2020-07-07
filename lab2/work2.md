@@ -86,3 +86,23 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     return NULL;     
 ```
 从这里可以看出来，page2pa，其实可以获得这个page的物理地址，而不是上述的page管理的地址。这样理解就好多了。  
+
+----
+页目录项：  
+- bit 0(P): resent 位，若该位为 1 ,则 PDE 存在，否则不存在。
+- bit 1(R/W): read/write 位，若该位为 0 ,则只读，否则可写。
+- bit 2(U/S): user/supervisor位。
+- bit 3(PWT): page-level write-through，若该位为1则开启页层次的写回机制。
+- bit 4(PCD): page-level cache disable，若该位为1,则禁止页层次的缓存。
+- bit 5(A): accessed 位，若该位为1,表示这项曾在地址翻译的过程中被访问。
+- bit 6: 该位忽略。
+- bit 7(PS): 这个位用来确定 32 位分页的页大小，当该位为 1 且 CR4 的 PSE 位为 1 时，页大小为4M，否则为4K。
+- bit 11:8: 这几位忽略。
+- bit 32:12: 页表的PPN（页对齐的物理地址）。
+
+页表项：  
+页表项除了第 7 ， 8 位与 PDE 不同，其余位作用均相同。
+- bit 7(PAT): 如果支持 PAT 分页，间接决定这项访问的 4 K 页的内存类型;如果不支持，这位保留（必须为 0 ）。
+- bit 8(G): global 位。当 CR4 的 PGE 位为 1 时，若该位为 1 ，翻译是全局的;否则，忽略该位。
+
+**其中被忽略的位可以被操作系统用于实现各种功能;和权限相关的位可以用来增强ucore的内存保护机制;access 位可以用来实现内存页交换算法。**
